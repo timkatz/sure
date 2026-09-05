@@ -1,5 +1,13 @@
 # Repository Guidelines
 
+## Guidance Synchronization
+
+`AGENTS.md` and `CLAUDE.md` are complementary repository guidance. When changing
+shared project conventions, commands, provider behavior, testing rules, or
+workflow requirements, inspect both files and update both in the same change.
+Keep tool-specific guidance only when it is clearly labeled, and add a matching
+cross-reference in the other file so the difference is intentional and visible.
+
 ## Project Structure & Module Organization
 - Code: `app/` (Rails MVC, services, jobs, mailers, components), JS in `app/javascript/`, styles/assets in `app/assets/` (Tailwind, images, fonts).
 - Config: `config/`, environment examples in `.env.local.example` and `.env.test.example`.
@@ -85,11 +93,15 @@ When a provider sync/import path hits a recoverable error or suspicious partial 
   - Shows a small “Pending” badge when `transaction.pending?` is true.
 - Variability
   - Some providers don’t expose pendings; in that case nothing is shown.
-- Configuration (default-off)
+- Configuration (provider-specific defaults)
   - SimpleFIN runtime toggles live in `config/initializers/simplefin.rb` via `Rails.configuration.x.simplefin.*`.
+  - Plaid runtime toggles live in `config/initializers/plaid_config.rb` via `Rails.configuration.x.plaid.*`.
   - Lunchflow runtime toggles live in `config/initializers/lunchflow.rb` via `Rails.configuration.x.lunchflow.*`.
+  - SimpleFIN and Plaid pending fetching default on; set their `*_INCLUDE_PENDING=0` variables to disable it.
+  - Lunchflow pending fetching defaults off; set `LUNCHFLOW_INCLUDE_PENDING=1` to enable it.
   - ENV-backed keys:
-    - `SIMPLEFIN_INCLUDE_PENDING=1` (forces `pending=1` on SimpleFIN fetches when caller didn’t specify a `pending:` arg)
+    - `SIMPLEFIN_INCLUDE_PENDING=0` (disables pending SimpleFIN transactions)
+    - `PLAID_INCLUDE_PENDING=0` (disables pending Plaid transactions)
     - `SIMPLEFIN_DEBUG_RAW=1` (logs raw payload returned by SimpleFIN)
     - `LUNCHFLOW_INCLUDE_PENDING=1` (forces `include_pending=true` on Lunchflow API requests)
     - `LUNCHFLOW_DEBUG_RAW=1` (logs raw payload returned by Lunchflow)

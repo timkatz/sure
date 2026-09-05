@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Guidance Synchronization
+
+`CLAUDE.md` and `AGENTS.md` are complementary repository guidance. When changing
+shared project conventions, commands, provider behavior, testing rules, or
+workflow requirements, inspect both files and update both in the same change.
+Keep tool-specific guidance only when it is clearly labeled, and add a matching
+cross-reference in the other file so the difference is intentional and visible.
+
 ## Common Development Commands
 
 ### Development Server
@@ -104,27 +112,31 @@ Two primary data ingestion methods:
    - Supports transaction and balance imports
    - Custom field mapping with transformation rules
 
-### Provider Integrations: Pending Transactions and FX (SimpleFIN/Plaid)
+### Provider Integrations: Pending Transactions and FX (SimpleFIN/Plaid/Lunchflow)
 
 - Detection
   - SimpleFIN: pending via `pending: true` or `posted` blank/0 + `transacted_at`.
   - Plaid: pending via Plaid `pending: true` (stored at `extra["plaid"]["pending"]` for bank/credit transactions imported via `PlaidEntry::Processor`).
+  - Lunchflow: pending via `isPending: true` (stored at `extra["lunchflow"]["pending"]`).
 - Storage: provider data on `Transaction#extra` (e.g., `extra["simplefin"]["pending"]`; FX uses `fx_from`, `fx_date`).
 - UI: "Pending" badge when `transaction.pending?` is true; no badge if provider omits pendings.
-- Configuration (default-on for pending)
+- Configuration (provider-specific defaults)
   - SimpleFIN: `config/initializers/simplefin.rb` via `Rails.configuration.x.simplefin.*`.
   - Plaid: `config/initializers/plaid_config.rb` via `Rails.configuration.x.plaid.*`.
-  - Pending transactions are fetched by default and handled via reconciliation/filtering.
+  - Lunchflow: `config/initializers/lunchflow.rb` via `Rails.configuration.x.lunchflow.*`.
+  - SimpleFIN and Plaid pending fetching default on; Lunchflow pending fetching defaults off.
   - Set `SIMPLEFIN_INCLUDE_PENDING=0` to disable pending fetching for SimpleFIN.
   - Set `PLAID_INCLUDE_PENDING=0` to disable pending fetching for Plaid.
+  - Set `LUNCHFLOW_INCLUDE_PENDING=1` to enable pending fetching for Lunchflow.
   - Set `SIMPLEFIN_DEBUG_RAW=1` to enable raw payload debug logging.
+  - Set `LUNCHFLOW_DEBUG_RAW=1` to enable raw payload debug logging.
   - Set `UP_DEBUG_RAW=1` to enable raw Up payload debug logging. DEV-ONLY: the dump contains PII and is gated to local environments, so it never logs in managed/production.
 
 Provider support notes:
 - SimpleFIN: supports pending + FX metadata (stored under `extra["simplefin"]`).
 - Plaid: supports pending when the upstream Plaid payload includes `pending: true` (stored under `extra["plaid"]`).
 - Plaid investments: investment transactions currently do not store pending metadata.
-- Lunchflow: does not currently store pending metadata.
+- Lunchflow: supports pending via `include_pending`; stored under `extra["lunchflow"]`.
 
 ### Background Processing
 Sidekiq handles asynchronous tasks:
@@ -171,17 +183,6 @@ Sidekiq handles asynchronous tasks:
   - API keys with JWT tokens for direct API access
 - Scoped permissions system for API access
 - Strong parameters and CSRF protection throughout
-
-### Testing Philosophy
-- Comprehensive test coverage using Rails' built-in Minitest
-- Fixtures for test data (avoid FactoryBot)
-- Keep fixtures minimal (2-3 per model for base cases)
-- VCR for external API testing
-- System tests for critical user flows (use sparingly)
-- Test helpers in `test/support/` for common scenarios
-- Only test critical code paths that significantly increase confidence
-- Write tests as you go, when required
-- **API Endpoints require OpenAPI specs** in `spec/requests/api/` for documentation purposes ONLY, not test (uses RSpec + rswag)
 
 ### Performance Considerations
 - Database queries optimized with proper indexes
@@ -236,6 +237,15 @@ Sidekiq handles asynchronous tasks:
   - `border border-primary` instead of `border border-gray-200`
 - **NEVER create new styles** in design system files without permission
 - **Always generate semantic HTML**
+- Check `app/components/DS/` for an existing primitive before hand-rolling alerts, badges, buttons, disclosures, dialogs, menus, or inputs.
+- If the same hand-rolled shape appears twice in a diff and no DS equivalent exists, propose a new `DS::*` primitive.
+- Do not use raw SVG outside DS primitives, and avoid arbitrary pixel values when a scale token fits.
+
+## Securities Providers
+
+When adding a securities price provider, follow
+[`docs/llm-guides/adding-a-securities-provider.md`](docs/llm-guides/adding-a-securities-provider.md)
+for provider classes, registry wiring, MIC handling, settings UI, locales, and tests.
 
 ## Component Architecture
 
